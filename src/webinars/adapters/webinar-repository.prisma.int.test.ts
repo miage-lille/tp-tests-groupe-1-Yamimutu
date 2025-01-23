@@ -1,58 +1,25 @@
 // Test d'intégration
-import { PrismaClient } from '@prisma/client';
-import {
-  PostgreSqlContainer,
-  StartedPostgreSqlContainer,
-} from '@testcontainers/postgresql';
-import { exec } from 'child_process';
+import { TestServerFixture } from 'src/tests/fixtures';
 import { PrismaWebinarRepository } from 'src/webinars/adapters/webinar-repository.prisma';
 import { Webinar } from 'src/webinars/entities/webinar.entity';
-import { promisify } from 'util';
-
-const asyncExec = promisify(exec);
 
 describe('PrismaWebinarRepository', () => {
-  let container: StartedPostgreSqlContainer;
-  let prismaClient: PrismaClient;
+  let fixture: TestServerFixture;
   let repository: PrismaWebinarRepository;
 
   beforeAll(async () => {
-    // Connect to database
-    container = await new PostgreSqlContainer()
-      .withDatabase('test_db')
-      .withUsername('user_test')
-      .withPassword('password_test')
-      .withExposedPorts(5432)
-      .start();
-
-    const dbUrl = container.getConnectionUri();
-    prismaClient = new PrismaClient({
-      datasources: {
-        db: { url: dbUrl },
-      },
-    });
-
-    // Run migrations to populate the database
-    // await asyncExec(`DATABASE_URL=${dbUrl} npx prisma migrate deploy`);
-
-    // ajout du set pour pouvoir lancer sous Windows
-    await asyncExec(`set DATABASE_URL=${dbUrl} && npx prisma migrate deploy`);
-
-    return prismaClient.$connect();
+    fixture = new TestServerFixture();
+    await fixture.init();
   });
 
   beforeEach(async () => {
+    await fixture.reset();
+    const prismaClient = fixture.getPrismaClient();
     repository = new PrismaWebinarRepository(prismaClient);
-    await prismaClient.webinar.deleteMany();
-    await prismaClient.$executeRawUnsafe('DELETE FROM "Webinar" CASCADE');
   });
 
   afterAll(async () => {
-    if (container) {
-      await container.stop({ timeout: 1000 });
-    }
-
-    return prismaClient.$disconnect();
+    await fixture.stop();
   });
 
   describe('Scenario : repository.create', () => {
@@ -71,7 +38,7 @@ describe('PrismaWebinarRepository', () => {
       await repository.create(webinar);
 
       // ASSERT
-      const maybeWebinar = await prismaClient.webinar.findUnique({
+      const maybeWebinar = await fixture.getPrismaClient().webinar.findUnique({
         where: { id: 'webinar-id' },
       });
       expect(maybeWebinar).toEqual({
@@ -97,7 +64,7 @@ describe('PrismaWebinarRepository', () => {
         seats: 100,
       });
 
-      await prismaClient.webinar.create({
+      await fixture.getPrismaClient().webinar.create({
         data: {
           id: webinar.props.id,
           organizerId: webinar.props.organizerId,
@@ -135,7 +102,7 @@ describe('PrismaWebinarRepository', () => {
         seats: 100,
       });
 
-      await prismaClient.webinar.create({
+      await fixture.getPrismaClient().webinar.create({
         data: {
           id: webinar.props.id,
           organizerId: webinar.props.organizerId,
@@ -152,9 +119,11 @@ describe('PrismaWebinarRepository', () => {
       await repository.update(webinar);
 
       // ASSERT
-      const maybeUpdatedWebinar = await prismaClient.webinar.findUnique({
-        where: { id: 'webinar-id' },
-      });
+      const maybeUpdatedWebinar = await fixture
+        .getPrismaClient()
+        .webinar.findUnique({
+          where: { id: 'webinar-id' },
+        });
       expect(maybeUpdatedWebinar).toEqual({
         id: 'webinar-id',
         organizerId: 'organizer-id',
