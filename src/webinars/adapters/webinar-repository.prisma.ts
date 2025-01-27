@@ -28,6 +28,12 @@ export class PrismaWebinarRepository implements IWebinarRepository {
     });
     return;
   }
+  async delete(id: string): Promise<void> {
+    await this.prisma.webinar.delete({
+      where: { id },
+    });
+    return;
+  }
 }
 
 class WebinarMapper {
