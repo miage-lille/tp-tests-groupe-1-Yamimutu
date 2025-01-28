@@ -34,8 +34,8 @@ export class TestServerFixture {
     });
 
     // ajout du set pour pouvoir lancer sous Windows
-    await asyncExec(`set DATABASE_URL=${dbUrl} && npx prisma migrate deploy`);
-    // await asyncExec(`DATABASE_URL=${dbUrl} npx prisma migrate deploy`);
+    // await asyncExec(`set DATABASE_URL=${dbUrl} && npx prisma migrate deploy`);
+    await asyncExec(`DATABASE_URL=${dbUrl} npx prisma migrate deploy`);
     await this.prismaClient.$connect();
 
     // Initialiser le conteneur avec Prisma
